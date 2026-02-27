@@ -10,7 +10,7 @@ if [ -f /etc/arch-release ]; then
     echo "📦 Система: Arch Linux / CachyOS. Оновлення..."
     # Виправлено: qt6-networkauth (без s), додано qrencode та інші залежності з твого CMake
     sudo pacman -S --needed --noconfirm base-devel cmake ninja extra-cmake-modules \
-    qt6-base qt6-svg qt6-5compat qt6-networkauth jdk17-openjdk zlib libgl \
+    qt6-base qt6-svg qt6-5compat qt6-networkauth jdk17-openjdk libgl \
     cmark libarchive tomlplusplus gamemode qrencode git
 elif [ -f /etc/fedora-release ]; then
     echo "📦 Система: Fedora. Оновлення..."
