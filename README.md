@@ -14,6 +14,11 @@
 * **Робить Portable:** Створює папку `~/Prism_Launcher`, де зберігаються всі моди та світи.
 * **Створює аліас:** Просто напиши `prism` у терміналі.
 
+```
+curl -s [https://raw.githubusercontent.com/tarasfedminecraft/I-Love_Scripts/refs/heads/main/prismcracked.sh](https://raw.githubusercontent.com/tarasfedminecraft/I-Love_Scripts/refs/heads/main/prismcracked.sh) | bash
+```
+
+
 # Я не буду оновлювати всі проєкти краще подивіться код
 
 ### ☕ Java Version Manager
