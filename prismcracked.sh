@@ -7,7 +7,6 @@ REPO_DIR="PrismLauncher"
 
 echo "--- 1. Встановлення залежностей (Arch/CachyOS фокус) ---"
 if command -v pacman >/dev/null 2>&1; then
-    # Додано нові компоненти, які вимагає свіжий CMakeLists (DBus, Xml, etc.)
     sudo pacman -S --needed --noconfirm base-devel cmake extra-cmake-modules qt6-base qt6-svg qt6-5compat qt6-declarative qt6-networkauth libsecret glu libarchive qrencode cmark tomlplusplus git perl ninja gamemode vulkan-headers jdk21-openjdk
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 elif command -v dnf >/dev/null 2>&1; then
@@ -27,7 +26,8 @@ if [ ! -d "$REPO_DIR" ]; then
     cd "$REPO_DIR"
 else
     cd "$REPO_DIR"
-    git pull
+    git fetch --all
+    git reset --hard origin/develop
     git submodule update --init --recursive
 fi
 
@@ -36,23 +36,31 @@ echo "--- 3. Патчинг (Offline Mode + Java 21 Fix) ---"
 sed -i 's/return data.type != AccountType::Offline && data.minecraftEntitlement.ownsMinecraft;/return true;/' launcher/minecraft/auth/MinecraftAccount.h
 perl -0777 -i -pe 's/for \(auto account : m_accounts\) \{.*?if \(account->ownsMinecraft\(\)\) \{.*?return true;.*?\}.*?\}/return true;/sg' launcher/minecraft/auth/AccountList.cpp
 
-# Fix: Змінюємо Java 7 на 8 для сумісності з новим JDK
-find libraries -name "CMakeLists.txt" -exec sed -i 's/SOURCE 7/SOURCE 8/g' {} +
-find libraries -name "CMakeLists.txt" -exec sed -i 's/TARGET 7/TARGET 8/g' {} +
+# Fix: Агресивна заміна Java 7 на 8 для сумісності з новим JDK (у всіх CMakeLists)
+find . -type f -name "CMakeLists.txt" -exec sed -i 's/SOURCE 7/SOURCE 8/g' {} +
+find . -type f -name "CMakeLists.txt" -exec sed -i 's/TARGET 7/TARGET 8/g' {} +
+find . -type f -name "CMakeLists.txt" -exec sed -i 's/source 1.7/source 1.8/g' {} +
+find . -type f -name "CMakeLists.txt" -exec sed -i 's/target 1.7/target 1.8/g' {} +
+
 echo "Патчі успішно застосовано."
 
 echo "--- 4. Налаштування збірки через пресети ---"
-# Новий Prism Launcher підтримує --preset. Використовуємо пресет 'linux' (або створюємо свій)
-rm -rf build
+# Видаляємо build, оскільки Ninja Multi-Config дуже чутливий до залишків старого кешу
+rm -rf build && mkdir build
+
+# Використовуємо пресет 'linux', але перехоплюємо налаштування Java через -D
 cmake --preset linux \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DJava_SOURCE_VERSION=8 \
+    -DJava_TARGET_VERSION=8 \
+    -DCMAKE_JAVA_COMPILE_FLAGS="-source;8;-target;8" \
     -DCMAKE_INSTALL_PREFIX="../dist" \
     -DLauncher_QT_VERSION_MAJOR=6 \
     -DCMAKE_Java_COMPILER="$JAVA_HOME/bin/javac"
 
 echo "--- 5. Компіляція та інсталяція ---"
-cmake --build build -j$(nproc)
-cmake --install build
+# Оскільки пресет використовує Multi-Config, явно вказуємо конфігурацію Release
+cmake --build build --config Release -j$(nproc)
+cmake --install build --config Release
 
 echo "--- 6. Створення Portable-версії ---"
 cd ..
@@ -82,7 +90,7 @@ Categories=Game;
 EOF
 
 echo "-------------------------------------------------------"
-echo "УСПІХ! Лаунчер зібрано за новою схемою CMake."
+echo "УСПІХ! Лаунчер зібрано за новою схемою CMake Presets."
 echo "Запуск: prism"
 echo "Шлях: $INSTALL_DIR"
 echo "-------------------------------------------------------"
