@@ -48,12 +48,12 @@ fi
 
 echo "--- 4. Налаштування збірки (CMake) ---"
 rm -rf build && mkdir -p build && cd build
-# Вказуємо CMAKE_INSTALL_PREFIX всередині папки збірки, щоб потім зручно скопіювати все разом
+# Встановлюємо префікс у ../dist всередині папки проекту
 cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DLauncher_QT_VERSION_MAJOR=6 -DCMAKE_INSTALL_PREFIX="../dist" -DCMAKE_Java_COMPILER="$JAVA_HOME/bin/javac"
 
-echo "--- 5. Компіляція ---"
+echo "--- 5. Компіляція та інсталяція в dist ---"
 cmake --build . -j$(nproc)
-cmake --install . # Це підготує всі ресурси в папці ../dist
+cmake --install . 
 
 if [ "$BUILD_FLATPAK" = true ]; then
     echo "--- 6. Збірка Flatpak ---"
@@ -87,25 +87,33 @@ else
     echo "--- 6. Встановлення у ~/Prism_Launcher ---"
     INSTALL_DIR="$HOME/Prism_Launcher"
     
-    # Видаляємо стару папку, якщо вона була, щоб оновлення було чистим
+    # Очищаємо стару папку для чистого оновлення
     rm -rf "$INSTALL_DIR"
     mkdir -p "$INSTALL_DIR"
     
-    # Копіюємо все з папки dist (бінарник, іконки, ліби) у нашу папку в Home
+    # Копіюємо вміст dist. CMake кладе бінарник у bin/
     cp -r ../dist/* "$INSTALL_DIR/"
     
-    # Створюємо файл portable.txt, щоб усі дані гри були в цій папці
-    touch "$INSTALL_DIR/portable.txt"
+    # Визначаємо шлях до бінарного файлу
+    LAUNCHER_EXEC="$INSTALL_DIR/bin/prismlauncher"
     
-    # Робимо файл виконуваним (на випадок, якщо права збилися)
-    chmod +x "$INSTALL_DIR/prismlauncher"
+    # Створюємо файл portable.txt в папці bin поруч з екзешником
+    touch "$INSTALL_DIR/bin/portable.txt"
+    
+    # Даємо права на виконання
+    if [ -f "$LAUNCHER_EXEC" ]; then
+        chmod +x "$LAUNCHER_EXEC"
+    else
+        echo "Помилка: Бінарний файл не знайдено за шляхом $LAUNCHER_EXEC"
+        exit 1
+    fi
     
     # Створення аліасу для термінала
-    sudo ln -sf "$INSTALL_DIR/prismlauncher" /usr/local/bin/prism
+    sudo ln -sf "$LAUNCHER_EXEC" /usr/local/bin/prism
     
     echo "-------------------------------------------------------"
-    echo "ГОТОВО! Лаунчер та всі його файли знаходяться у: $INSTALL_DIR"
-    echo "Тепер це Portable-версія (моди та світи будуть у цій же папці)."
-    echo "Запускай лаунчер командою: prism"
+    echo "ГОТОВО! Лаунчер встановлено за шляхом: $LAUNCHER_EXEC"
+    echo "Тепер це Portable-версія (моди та світи будуть у папці bin)."
+    echo "Ви можете запустити його командою: prism"
     echo "-------------------------------------------------------"
 fi
