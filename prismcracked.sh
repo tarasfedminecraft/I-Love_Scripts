@@ -56,8 +56,23 @@ cmake --build . -j$(nproc)
 cmake --install . 
 
 if [ "$BUILD_FLATPAK" = true ]; then
-    echo "--- 6. Збірка Flatpak ---"
+    echo "--- 6. Підготовка та збірка Flatpak ---"
     cd ..
+
+    # Перевіряємо чи встановлено flatpak у системі
+    if ! command -v flatpak >/dev/null 2>&1; then
+        echo "Помилка: flatpak не знайдено. Встанови його через менеджер пакетів."
+        exit 1
+    fi
+
+    # Додаємо Flathub, якщо його немає
+    flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+    # --- ОСЬ ЦЕЙ БЛОК АВТОМАТИЧНО СКАЧУЄ SDK ТА RUNTIME ---
+    echo "Перевірка та завантаження SDK (може зайняти час)..."
+    flatpak install --user --noninteractive flathub org.kde.Sdk//6.6 org.kde.Platform//6.6
+    # -----------------------------------------------------
+
     cat <<EOF > org.prismlauncher.PrismCracked.yml
 app-id: org.prismlauncher.PrismCracked
 runtime: org.kde.Platform
@@ -80,9 +95,10 @@ modules:
     build-commands:
       - cmake --build build --target install
 EOF
-    flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+    echo "Початок збірки Flatpak-пакета..."
     flatpak-builder --user --install --force-clean build-flatpak org.prismlauncher.PrismCracked.yml
-    echo "--- Flatpak встановлено! ---"
+    echo "--- Flatpak успішно зібрано та встановлено! ---"
 else
     echo "--- 6. Встановлення у ~/Prism_Launcher ---"
     INSTALL_DIR="$HOME/Prism_Launcher"
