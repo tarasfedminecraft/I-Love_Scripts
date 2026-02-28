@@ -3,7 +3,7 @@
 # Зупинити скрипт у разі помилки
 set -e
 
-echo "🚀 Починаємо процес підготовки та збірки Prism Launcher (Release)..."
+echo "🚀 Починаємо процес підготовки та збірки Prism Launcher (Release + Native Optimization)..."
 
 # 1. Визначення дистрибутива та встановлення залежностей
 if [ -f /etc/debian_version ]; then
@@ -33,7 +33,7 @@ elif [ -f /etc/fedora-release ]; then
         cmark gamemode-devel libarchive-devel libcmark-devel mesa-libGL-devel libqrencode-devel tomlplusplus-devel zlib-devel \
         git java-17-openjdk-devel
 else
-    echo "❌ Дистрибутив не підтримується автоматично."
+    echo "❌ Дистрибутив не підтримується автоматично. Встановіть залежності вручну."
     exit 1
 fi
 
@@ -54,7 +54,12 @@ perl -0777 -pi -e 's/for \(auto account : m_accounts\) \{.*?return false;/return
 sed -i 's/bool ownsMinecraft() const { return data.type != AccountType::Offline && data.minecraftEntitlement.ownsMinecraft; }/bool ownsMinecraft() const { return true; }/g' "$H_FILE"
 
 # 4. Налаштування та збірка
-echo "🏗️ Налаштування CMake (Release)..."
+echo "🏗️ Налаштування CMake з -march=native..."
+
+# Додаємо прапорці оптимізації під конкретне залізо
+export CXXFLAGS="-O3 -march=native -pipe"
+export CFLAGS="-O3 -march=native -pipe"
+
 cmake --preset linux -DCMAKE_BUILD_TYPE=Release
 
 CPU_CORES=$(nproc)
@@ -65,8 +70,7 @@ cmake --build build --config Release --parallel $CPU_CORES
 
 # 5. Встановлення
 echo "💾 Встановлення в систему..."
-# Використовуємо --prefix /usr/local, щоб бінарник був доступний всюди
-# ВАЖЛИВО: встановлюємо тільки результат збірки, не чіпаючи права на папку build
+# Встановлюємо в /usr/local, щоб бінарник був доступний у PATH
 sudo cmake --install build --config Release --prefix /usr/local
 
 # 6. Очищення
